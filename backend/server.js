@@ -106,7 +106,10 @@ const dbConfig = {
     port: Number(process.env.DB_PORT) || 3307,
     dateStrings: true,
     waitForConnections: true,
-    connectionLimit: 10
+    connectionLimit: 10,
+    ssl: {
+        rejectUnauthorized: false // Required for cloud databases like Aiven
+    }
 };
 
 let db;
@@ -352,14 +355,11 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 // ---------- RULE-BASED REPORT CLASSIFICATION (keyword rules, not a trained AI model) ----------
-// Reads a community report and SUGGESTS: category, issue, status and a confidence.
-// It never verifies anything. An admin must approve every change.
 const LABELS = {
     ramp: "Ramp", lift: "Lift", entrance: "Entrance",
     restroom: "Restroom", parking: "Parking"
 };
 
-// word lists for each category (words people really write in reports)
 const CATEGORY_WORDS = {
     ramp: /\bramps?\b|slope/,
     lift: /\blifts?\b|elevators?/,
@@ -379,7 +379,6 @@ function parseReport(type, details) {
     const detailText = String(details || "").toLowerCase();
     const all = typeText + " " + detailText;
 
-    // 1. Category: the chosen update type wins, otherwise read the details
     let field = null;
     let fieldFrom = null;
 
@@ -392,7 +391,6 @@ function parseReport(type, details) {
         }
     }
 
-    // 2. Status: read what the person WROTE first; use the chosen update type only if the text has no clue
     function readStatus(text) {
         if (NEGATED_PROBLEM.test(text)) return 1;
         if (PROBLEM_WORDS.test(text)) return 0;
@@ -404,7 +402,6 @@ function parseReport(type, details) {
     if (value === null) value = readStatus(typeText);
     const cue = value !== null;
 
-    // 3. Issue wording
     let issue;
     if (value === 0) {
         issue = PERMANENT_WORDS.test(all) && !TEMPORARY_WORDS.test(all) ? "not available" : "temporarily unavailable";
@@ -414,7 +411,6 @@ function parseReport(type, details) {
         issue = "unclear, needs checking";
     }
 
-    // 4. Confidence (a simple score, not a probability)
     let confidence = 25;
     if (field) confidence += fieldFrom === "type" ? 35 : 25;
     if (cue) confidence += 25;
@@ -428,7 +424,7 @@ function parseReport(type, details) {
     return { field, value, issue, confidence, text };
 }
 
-// ---------- SUBMIT A REPORT (login required, photo optional) ----------
+// ---------- SUBMIT A REPORT ----------
 app.post("/api/reports", async (req, res) => {
     try {
         const uid = verifyToken((req.get("authorization") || "").replace("Bearer ", ""));
@@ -494,7 +490,7 @@ app.post("/api/reports", async (req, res) => {
     }
 });
 
-// ---------- MY REPORTS (so a user can follow a report's status) ----------
+// ---------- MY REPORTS ----------
 app.get("/api/reports/mine", async (req, res) => {
     try {
         const uid = verifyToken((req.get("authorization") || "").replace("Bearer ", ""));
@@ -537,7 +533,6 @@ function toValue(x) {
     return (x === 1 || x === 0 || x === "1" || x === "0") ? Number(x) : null;
 }
 
-// Checks the admin key (used by the admin login screen)
 app.get("/api/admin/check", adminOnly, (req, res) => {
     res.json({ success: true });
 });
@@ -593,7 +588,6 @@ app.post("/api/admin/reports/:id/verify", adminOnly, async (req, res) => {
         const values = FIELDS.map(field => toValue(req.body[field]));
         const note = String(req.body.note || "").trim().slice(0, 255) || null;
 
-        // The classifier only suggests. The admin must say how they checked it.
         if (!note) {
             return res.status(400).json({
                 success: false,
@@ -621,7 +615,6 @@ app.post("/api/admin/reports/:id/reject", adminOnly, async (req, res) => {
     }
 });
 
-// HOW MANY REPORTS ARE STORED IN MYSQL (shown on the admin page)
 app.get("/api/admin/stats", adminOnly, async (req, res) => {
     try {
         const [rows] = await db.query("SELECT status, COUNT(*) AS n FROM reports GROUP BY status");
@@ -637,7 +630,6 @@ app.get("/api/admin/stats", adminOnly, async (req, res) => {
     }
 });
 
-// ADD VERIFIED DATA DIRECTLY (admin confirmed it by phone or visit)
 app.post("/api/admin/places", adminOnly, async (req, res) => {
     try {
         const key = String(req.body.place_key || "").trim().slice(0, 40);
