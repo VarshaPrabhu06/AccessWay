@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AccessWay | Know Before You Go</title>
+    <meta name="theme-color" content="#43217d">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="accessway-upgrade.css">
+</head>
+
+<body>
+
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header class="navbar">
+        <a href="#home" class="brand">
+            <span class="logo-icon">
+                <svg viewBox="0 0 64 64">
+                    <path class="arch" d="M15 48V27a17 17 0 0 1 34 0v21"/>
+                    <path class="road" d="M5 53C24 48 31 38 32 29"/>
+                    <circle class="check-bg" cx="32" cy="27" r="8.5"/>
+                    <path class="check" d="m28 27 3 3 6-7"/>
+                </svg>
+            </span>
+            <span class="brand-name">Access<span>Way</span></span>
+        </a>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-controls="navLinks" aria-expanded="false">☰</button>
+
+        <nav class="nav-links" id="navLinks">
+            <a href="#home">Home</a>
+            <a href="#explore">Explore</a>
+            <a href="#about">About</a>
+            <button class="nav-link-btn" id="navMine" type="button">My reports</button>
+            <button class="report-button" id="navReport">+ Report an Update</button>
+        </nav>
+    </header>
+
+    <main id="main">
+
+        <section class="hero" id="home">
+            <div class="hero-content">
+                <div class="eyebrow">
+                    <span class="dot"></span>
+                    ACCESSIBILITY, MADE CLEARER
+                </div>
+
+                <h1>Know before<br>you <span>go.</span></h1>
+
+                <p>
+                    Search any public place in the world and see what
+                    accessibility information is recorded before you travel.
+                </p>
+
+                <a href="#explore" class="primary-button">Explore Places <span>↗</span></a>
+
+                <div class="trust-message">
+                    <span>✓</span>
+                    Community updates · Clear accessibility details
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="orbit orbit-one"></div>
+                <div class="orbit orbit-two"></div>
+
+                <div class="visual-card">
+                    <div class="map-illustration">
+                        <div class="map-road road-one"></div>
+                        <div class="map-road road-two"></div>
+                        <div class="map-road road-three"></div>
+                        <div class="map-pin"><span>✓</span></div>
+                        <div class="small-pin">•</div>
+                        <div class="map-building building-one">+</div>
+                        <div class="map-building building-two">↗</div>
+                    </div>
+
+                    <div class="sample-card">
+                        <span class="sample-tag">SAMPLE · ILLUSTRATION ONLY</span>
+                        <div class="sample-top">
+                            <div>
+                                <strong>Example Hospital</strong>
+                                <small>Wheelchair User · 5 of 5 checks confirmed</small>
+                            </div>
+                            <div class="sample-score">70</div>
+                        </div>
+                        <p class="sample-status">Partially Accessible</p>
+                        <p class="sample-checks">Ramp × · Lift ✓ · Entrance ✓ · Restroom ✓ · Parking ✓</p>
+                    </div>
+                </div>
+
+                <div class="floating-label label-top">♿ Wheelchair-friendly filters</div>
+                <div class="floating-label label-bottom">✓ Community updates</div>
+            </div>
+        </section>
+
+        <section class="explore-section" id="explore">
+
+            <div class="section-heading">
+                <div>
+                    <span class="section-label">FIND YOUR WAY</span>
+                    <h2>Explore Accessible Places</h2>
+                </div>
+                <p>Search a hospital, library or station<br>anywhere in the world.</p>
+            </div>
+
+            <div class="search-panel">
+                <form class="search-box" id="searchForm">
+                    <span class="search-icon">⌕</span>
+                    <label for="searchInput" class="sr-only">Search for a place</label>
+                    <input type="search" id="searchInput"
+                           placeholder="Search a place, e.g. KMC Hospital Manipal"
+                           autocomplete="off">
+                    <button type="button" id="clearSearch" aria-label="Clear search">×</button>
+                    <button type="submit" class="search-submit">Search</button>
+                </form>
+
+                <div class="profile-box">
+                    <label for="profileSelect">I need accessibility for</label>
+                    <select id="profileSelect">
+                        <option value="wheelchair">Wheelchair User</option>
+                        <option value="elderly">Senior Citizen</option>
+                        <option value="stroller">Stroller / Caregiver</option>
+                        <option value="custom">Other (choose my own)</option>
+                    </select>
+                    <div class="needs hidden" id="needs">
+                        <label><input type="checkbox" class="need" value="ramp" checked>Ramp</label>
+                        <label><input type="checkbox" class="need" value="lift" checked>Lift</label>
+                        <label><input type="checkbox" class="need" value="entrance" checked>Entrance</label>
+                        <label><input type="checkbox" class="need" value="restroom" checked>Restroom</label>
+                        <label><input type="checkbox" class="need" value="parking" checked>Parking</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filters">
+                <span>Show:</span>
+                <button class="filter-chip selected" data-type="all" aria-pressed="true">All Places</button>
+                <button class="filter-chip" data-type="hospital" aria-pressed="false">Hospitals</button>
+                <button class="filter-chip" data-type="library" aria-pressed="false">Libraries</button>
+                <button class="filter-chip" data-type="bus" aria-pressed="false">Bus Stations</button>
+                <button class="filter-chip" data-type="railway" aria-pressed="false">Railway Stations</button>
+                <button class="filter-chip" data-type="office" aria-pressed="false">Public Offices</button>
+                <button class="filter-chip" id="nearBtn" type="button">📍 Near me</button>
+            </div>
+
+            <div class="filters">
+                <span>Try:</span>
+                <button class="filter-chip example" data-example="KMC Hospital Manipal">KMC Hospital Manipal</button>
+                <button class="filter-chip example" data-example="Gandhi Hospital Hyderabad">Gandhi Hospital Hyderabad</button>
+                <button class="filter-chip example" data-example="Udupi Railway Station">Udupi Railway Station</button>
+                <button class="filter-chip example" data-example="Central Library Udupi">Central Library Udupi</button>
+            </div>
+
+            <p class="search-status" id="searchStatus" role="status" aria-live="polite"></p>
+
+            <div class="view-bar">
+                <div class="view-toggle" role="group" aria-label="Choose how to view results">
+                    <button type="button" id="viewMap" aria-pressed="true">🗺 Map</button>
+                    <button type="button" id="viewList" aria-pressed="false">☰ List only</button>
+                </div>
+                <button type="button" class="details-btn" id="fitAll">Show all results on map</button>
+            </div>
+
+            <div id="map" role="region" aria-label="Map of search results. All results are also listed below as cards."></div>
+
+            <div class="results-heading">
+                <div>
+                    <h3>Places to Explore <span id="resultCount">0</span></h3>
+                    <p>Results from OpenStreetMap and AccessWay verified updates</p>
+                </div>
+            </div>
+
+            <p class="legend">
+                <span><b class="yes">✓</b> Yes</span>
+                <span><b class="no">×</b> No</span>
+                <span><b class="unknown">?</b> Not confirmed (left out of the score)</span>
+                <span><b>Verified</b> = confirmed by an AccessWay admin · <b>Community data</b> = tagged by OpenStreetMap contributors</span>
+            </p>
+
+            <div class="facility-grid" id="facilityGrid"></div>
+
+            <div class="empty-state" id="emptyState">
+                <div>⌕</div>
+                <h3 id="emptyTitle">Search any place in the world</h3>
+                <p id="emptyText">Type a name above, for example KMC Hospital Manipal.</p>
+            </div>
+
+            <p class="data-note">
+                ⓘ Accessibility details come from OpenStreetMap contributors and
+                AccessWay admin checks. Always confirm with the venue before you travel.
+            </p>
+
+        </section>
+
+        <section class="bottom-cta" id="about">
+            <div class="cta-icon">↗</div>
+
+            <div class="cta-content">
+                <span class="section-label">ACCESSWAY</span>
+                <h2>Better Information. Better Journeys.</h2>
+                <p>Accessibility details should be easier to find before you leave.</p>
+            </div>
+
+            <button class="secondary-button" id="ctaReport">Share an Update →</button>
+        </section>
+
+    </main>
+
+    <footer>
+        <a href="#home" class="footer-brand">Access<span>Way</span></a>
+        <span>Know Before You Go.</span>
+        <span class="footer-note">Team CyberNova · Map data © OpenStreetMap contributors</span>
+    </footer>
+
+    <div class="modal-backdrop hidden" id="reportModal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+
+            <button class="modal-close" id="modalClose" aria-label="Close report form">×</button>
+
+            <span class="section-label">COMMUNITY UPDATE</span>
+            <h2 id="reportTitle">Report a Change</h2>
+
+            <p class="modal-intro">
+                Help keep accessibility information up to date.
+                Reports stay pending until an admin reviews them.
+            </p>
+
+            <form id="reportForm">
+
+                <label for="reportFacility">Place (from your search results)</label>
+                <select id="reportFacility" required></select>
+
+                <label for="reportType">What changed?</label>
+                <select id="reportType" required>
+                    <option value="">Choose an update</option>
+                    <option>Ramp is available</option>
+                    <option>Ramp blocked or unavailable</option>
+                    <option>Lift is available</option>
+                    <option>Lift temporarily unavailable</option>
+                    <option>Entrance access changed</option>
+                    <option>Restroom information changed</option>
+                    <option>Parking information changed</option>
+                    <option>Other accessibility update</option>
+                </select>
+
+                <label for="reportDetails">More details</label>
+                <textarea id="reportDetails" rows="3"
+                          placeholder="Describe what you saw..." required></textarea>
+
+                <label for="reportPhoto">Photo as evidence (optional)</label>
+                <input type="file" id="reportPhoto" accept="image/*">
+
+                <p class="form-note">
+                    Reports are saved to the AccessWay database and
+                    stay pending until reviewed.
+                </p>
+
+                <p class="form-error" id="reportError" role="alert"></p>
+
+                <button class="primary-button full-width" type="submit">
+                    Submit for Review →
+                </button>
+            </form>
+
+            <div class="success-message hidden" id="reportSuccess">
+                <div class="success-symbol">✓</div>
+                <h3>Report Added for Review</h3>
+                <div id="reportResult" class="report-result"></div>
+                <div class="success-actions">
+                    <button class="primary-button" id="successDone" type="button">Done</button>
+                    <button class="details-btn" id="trackBtn" type="button">Track my reports</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="authModal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+            <button class="modal-close" id="authClose" aria-label="Close login form">×</button>
+            <h2 id="authTitle">Log in to continue</h2>
+            <form id="authForm">
+                <label id="nameRow" class="hidden">Name<input id="authName"></label>
+                <label>Email<input id="authEmail" type="email" required></label>
+                <label>Password<input id="authPass" type="password" minlength="6" required></label>
+                <p class="form-error" id="authError" role="alert"></p>
+                <button class="primary-button full-width" type="submit" id="authSubmit">Log in</button>
+                <p class="form-note"><a href="#" id="authSwitch">New here? Create an account</a></p>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="mineModal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mineTitle">
+            <button class="modal-close" id="mineClose" aria-label="Close my reports">×</button>
+            <span class="section-label">REPORT TRACKER</span>
+            <h2 id="mineTitle">My reports</h2>
+            <p class="modal-intro">Follow each report from pending to verified.</p>
+            <div id="mineList"></div>
+        </div>
+    </div>
+
+    <div class="toast hidden" id="toast" role="status"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+    <script src="accessway-upgrade.js"></script>
+
+</body>
+</html>

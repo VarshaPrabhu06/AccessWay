@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AccessWay Admin</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f8f5ff; margin: 0; padding: 24px; color: #211b32; }
+  h1 { color: #2f175d; margin-top: 0; }
+  h2 { color: #2f175d; font-size: 18px; margin: 28px 0 10px; }
+  .bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+  input, select, button { padding: 10px; border-radius: 8px; border: 1px solid #cfc3ea; font-size: 14px; }
+  button { background: #43217d; color: #fff; border: 0; cursor: pointer; font-weight: 700; }
+  button.reject { background: #c65347; }
+  button.ghost { background: #fff; color: #43217d; border: 1px solid #cfc3ea; }
+  .card { background: #fff; border: 1px solid #ddd5ec; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .card h3 { margin: 0 0 4px; }
+  .meta { color: #55506a; font-size: 12px; margin-bottom: 8px; }
+  .ai { background: #f0e9ff; color: #2f175d; padding: 8px 10px; border-radius: 8px; }
+  .ai-note { background: #fff3dc; color: #835a14; padding: 10px 12px; border-radius: 8px; font-size: 12px; margin: 0 0 14px; }
+  .checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 12px 0; }
+  .checks label { font-size: 12px; display: grid; gap: 4px; }
+  .actions { display: flex; gap: 8px; }
+  .hint { font-size: 12px; color: #55506a; }
+  .wide { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+  .hidden { display: none !important; }
+  #loginBox { max-width: 380px; margin: 80px auto; }
+  #loginMsg { color: #c65347; font-size: 13px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginBox" class="card">
+  <h1>AccessWay Admin</h1>
+  <p class="hint">Enter the admin key to continue.</p>
+  <form id="loginForm">
+    <input type="password" id="adminKey" class="wide" placeholder="Admin key" autocomplete="current-password" required>
+    <button type="submit" class="wide">Log in</button>
+    <div id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ADMIN PANEL (hidden until login works) -->
+<div id="appBox" class="hidden">
+
+  <div class="bar">
+    <h1 style="margin:0">AccessWay Admin</h1>
+    <button class="ghost" id="logoutBtn">Log out</button>
+  </div>
+
+  <h2>Add verified data for a place</h2>
+
+  <div class="card">
+    <p class="hint">Search the place, choose the right one, then select Yes or No only for what you have confirmed (phone call, visit or photo). Leave the rest as Unknown. The source note is required.</p>
+
+    <div class="bar">
+      <input id="qPlace" placeholder="e.g. Adarsha Hospital Udupi" style="min-width:260px">
+      <button id="qBtn">Search</button>
+    </div>
+
+    <select id="qResults" class="wide"></select>
+
+    <div class="checks" id="directChecks"></div>
+
+    <input id="directNote" class="wide" maxlength="255"
+           placeholder="Source (required), e.g. Confirmed by phone with reception on 18 Oct 2026">
+
+    <button id="saveDirect">Save as verified</button>
+    <span id="directMsg" class="hint"></span>
+  </div>
+
+  <h2>Community reports</h2>
+
+  <div class="bar">
+    <select id="statusFilter">
+      <option value="pending">Pending</option>
+      <option value="verified">Verified</option>
+      <option value="rejected">Rejected</option>
+    </select>
+    <button id="loadBtn">Load reports</button>
+  </div>
+
+  <p class="ai-note">How it works: the AI classifies each report and pre-selects Yes/No as a <b>suggestion</b>. Nothing changes on the hospital card until you check the facts, write a source note and click Verify.</p>
+
+  <div id="list"></div>
+</div>
+
+<script>
+const list = document.getElementById("list");
+const filter = document.getElementById("statusFilter");
+const loginBox = document.getElementById("loginBox");
+const appBox = document.getElementById("appBox");
+const loginMsg = document.getElementById("loginMsg");
+
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function headers() {
+  return { "Content-Type": "application/json", "x-admin-key": sessionStorage.getItem("aw_key") || "" };
+}
+
+const fields = [
+  ["ramp", "Ramp"], ["lift", "Lift"], ["entrance", "Step-free entrance"],
+  ["restroom", "Accessible restroom"], ["parking", "Accessible parking"]
+];
+
+// ---------- LOGIN ----------
+async function checkKey(key) {
+  const res = await fetch("/api/admin/check", { headers: { "x-admin-key": key } });
+  return res.ok;
+}
+
+function showApp() {
+  loginBox.classList.add("hidden");
+  appBox.classList.remove("hidden");
+  load();
+}
+
+document.getElementById("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const key = document.getElementById("adminKey").value;
+  loginMsg.textContent = "Checking…";
+
+  if (await checkKey(key)) {
+    sessionStorage.setItem("aw_key", key);
+    loginMsg.textContent = "";
+    showApp();
+  } else {
+    loginMsg.textContent = "Wrong admin key.";
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem("aw_key");
+  document.getElementById("adminKey").value = "";
+  appBox.classList.add("hidden");
+  loginBox.classList.remove("hidden");
+});
+
+// stay logged in for this tab
+(async () => {
+  const saved = sessionStorage.getItem("aw_key");
+  if (saved && await checkKey(saved)) showApp();
+})();
+
+// ---------- DIRECT ADD ----------
+let found = [];
+
+document.getElementById("directChecks").innerHTML = fields.map(f => `
+  <label>${f[1]}
+    <select data-direct="${f[0]}">
+      <option value="">Unknown</option>
+      <option value="1">Yes</option>
+      <option value="0">No</option>
+    </select>
+  </label>`).join("");
+
+document.getElementById("qBtn").addEventListener("click", async () => {
+  const q = document.getElementById("qPlace").value.trim();
+  const select = document.getElementById("qResults");
+  const msg = document.getElementById("directMsg");
+
+  if (q.length < 3) { msg.textContent = "Type at least 3 letters."; return; }
+
+  msg.textContent = "Searching…";
+
+  const res = await fetch("/api/places/search?q=" + encodeURIComponent(q));
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || !data.success) { msg.textContent = data.message || "Search failed."; return; }
+
+  found = data.places;
+  select.innerHTML = found.length
+    ? found.map((p, i) => `<option value="${i}">${esc(p.name)} — ${esc(p.address.slice(0, 90))}</option>`).join("")
+    : "";
+  msg.textContent = found.length ? found.length + " place(s) found." : "No places found.";
+});
+
+document.getElementById("saveDirect").addEventListener("click", async () => {
+  const msg = document.getElementById("directMsg");
+  const place = found[Number(document.getElementById("qResults").value)];
+  const note = document.getElementById("directNote").value.trim();
+
+  if (!place) { msg.textContent = "Search and choose a place first."; return; }
+  if (!note) { msg.textContent = "Please write the source of this information."; return; }
+
+  const body = {
+    place_key: place.place_key,
+    place_name: place.name,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    note: note
+  };
+
+  document.querySelectorAll("[data-direct]").forEach(s => { body[s.dataset.direct] = s.value; });
+
+  const res = await fetch("/api/admin/places", {
+    method: "POST", headers: headers(), body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+
+  msg.textContent = res.ok
+    ? "Saved. Search this place on the main page to see it."
+    : (data.message || "Could not save.");
+});
+
+// ---------- REPORTS ----------
+async function load() {
+  list.innerHTML = "<p>Loading…</p>";
+
+  const res = await fetch("/api/admin/reports?status=" + filter.value, { headers: headers() });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) { list.innerHTML = "<p>" + esc(data.message || "Error") + "</p>"; return; }
+  if (!data.reports.length) { list.innerHTML = "<p>No reports here.</p>"; return; }
+
+  list.innerHTML = data.reports.map(r => `
+    <div class="card" data-id="${r.id}">
+      <h3>${esc(r.place_name)}</h3>
+      <div class="meta">${esc(r.report_type)} · ${esc(r.created_at)} · ${esc(r.place_key)}</div>
+      <p>${esc(r.details)}</p>
+      ${r.parsed_text ? `<div class="meta ai">🤖 AI classification (suggestion only): <b>${esc(r.parsed_text)}</b></div>` : ""}
+      ${r.duplicate_of ? `<div class="meta" style="color:#c65347">Possible duplicate of report #${r.duplicate_of}</div>` : ""}
+      ${r.photo ? `<a href="/uploads/${esc(r.photo)}" target="_blank"><img src="/uploads/${esc(r.photo)}" style="max-width:220px;border-radius:8px"></a>` : ""}
+      ${r.status === "pending" ? `
+        <div class="checks">
+          ${fields.map(f => `
+            <label>${f[1]}
+              <select data-field="${f[0]}">
+                <option value="">Unknown</option>
+                <option value="1" ${r.parsed_field === f[0] && r.parsed_value === 1 ? "selected" : ""}>Yes</option>
+                <option value="0" ${r.parsed_field === f[0] && r.parsed_value === 0 ? "selected" : ""}>No</option>
+              </select>
+            </label>`).join("")}
+        </div>
+        <input class="wide" data-note maxlength="255" placeholder="Source note (required): how did you confirm this?">
+        <div class="actions">
+          <button data-act="verify">Verify</button>
+          <button data-act="reject" class="reject">Reject</button>
+        </div>` : `<div class="meta">Status: ${esc(r.status)}</div>`}
+    </div>`).join("");
+}
+
+list.addEventListener("click", async event => {
+  const btn = event.target.closest("[data-act]");
+  if (!btn) return;
+
+  const card = btn.closest(".card");
+  const id = card.dataset.id;
+  let body = {};
+
+  if (btn.dataset.act === "verify") {
+    card.querySelectorAll("[data-field]").forEach(s => { body[s.dataset.field] = s.value; });
+    body.note = card.querySelector("[data-note]").value.trim();
+
+    if (!body.note) {
+      alert("Write a source note first (for example: confirmed by phone). The AI only suggests; you approve.");
+      return;
+    }
+  }
+
+  const res = await fetch(`/api/admin/reports/${id}/${btn.dataset.act}`, {
+    method: "POST", headers: headers(), body: JSON.stringify(body)
+  });
+
+  if (res.ok) { load(); } else {
+    const err = await res.json().catch(() => ({}));
+    alert(err.message || "Could not update this report.");
+  }
+});
+
+document.getElementById("loadBtn").addEventListener("click", load);
+</script>
+</body>
+</html>
